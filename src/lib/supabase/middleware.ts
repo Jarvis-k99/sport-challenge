@@ -3,10 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
+const PUBLIC_PATHS = ["/login", "/auth"];
+
 /**
- * Refreshes the user's auth tokens on every request and forwards
- * the updated cookies to the response. Without this, expired
- * access tokens never get refreshed in Server Components.
+ * Refreshes the user's auth tokens on every request, then redirects:
+ *  - unauthenticated users away from protected routes -> /login
+ *  - authenticated users away from /login            -> /
+ *
+ * IMPORTANT: nothing must run between createServerClient() and
+ * supabase.auth.getUser() — the SSR helper relies on that being
+ * the first read so it can refresh the access token and set the
+ * new cookies on the response.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -32,10 +39,29 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: do not put any logic between createServerClient and
-  // getUser — it must run as the first read so the SSR helper can
-  // refresh the token and set new cookies on the response.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && pathname === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    const redirect = NextResponse.redirect(url);
+    // Preserve any cookies that the auth refresh just set.
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirect.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirect;
+  }
 
   return supabaseResponse;
 }
