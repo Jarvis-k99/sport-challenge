@@ -5,6 +5,9 @@ import { formatCents } from "@/lib/format";
 import ResolveForm from "./resolve-form";
 import type { ChallengeRow } from "@/components/dashboard/Challenges";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {

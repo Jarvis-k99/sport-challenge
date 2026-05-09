@@ -149,9 +149,12 @@ export default async function DashboardPage() {
         </Link>
       ) : null}
 
-      <p className="text-center text-xs text-neutral-400">
-        Build: phase 5 — challenges.
-      </p>
+      <Link
+        href="/rules"
+        className="text-center text-xs text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline"
+      >
+        Read the rules
+      </Link>
     </main>
   );
 }

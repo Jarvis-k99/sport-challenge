@@ -6,6 +6,9 @@ import { deleteEntry } from "./actions";
 import LogForm, { type ActivityType } from "./log-form";
 import { formatRelativeDay } from "@/lib/format";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Log activity" };
 export const dynamic = "force-dynamic";
 
 type MyEntry = {

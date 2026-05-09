@@ -2,7 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sport Challenge",
+  title: {
+    default: "Sport Challenge",
+    template: "%s · Sport Challenge",
+  },
   description: "Track our sports challenge — log activities, watch the bucket grow.",
 };
 
