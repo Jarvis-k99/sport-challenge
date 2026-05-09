@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/dashboard/Header";
@@ -94,11 +95,17 @@ export default async function DashboardPage() {
   return (
     <main className="flex flex-col gap-6 pb-24 pt-2">
       <Header displayName={profile.display_name} isAdmin={profile.is_admin} />
+      <Link
+        href="/log"
+        className="block w-full rounded-xl bg-bucket-500 py-3 text-center text-base font-semibold text-white shadow-sm transition active:scale-[0.99]"
+      >
+        + Log activity
+      </Link>
       <WeekProgress rows={progress} currentUserId={user.id} />
       <BucketSummary rows={bucket} currency={currency} currentUserId={user.id} />
       <RecentActivity entries={recent} todayLocal={todayLocal} />
       <p className="text-center text-xs text-neutral-400">
-        Build: phase 3 — auth + dashboard read.
+        Build: phase 4 — activity logging.
       </p>
     </main>
   );
