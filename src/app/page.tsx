@@ -70,7 +70,7 @@ export default async function DashboardPage() {
   if (errors.length > 0) {
     return (
       <main className="flex flex-col gap-4 pt-6">
-        <h1 className="text-xl font-bold">Couldn't load the dashboard</h1>
+        <h1 className="text-xl font-bold">Couldn’t load the dashboard</h1>
         <pre className="overflow-auto rounded-xl bg-red-50 p-3 text-xs text-red-700">
           {errors.map((e) => e?.message).join("\n")}
         </pre>
