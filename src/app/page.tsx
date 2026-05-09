@@ -11,6 +11,9 @@ import BucketSummary, {
 import RecentActivity, {
   type RecentEntry,
 } from "@/components/dashboard/RecentActivity";
+import Challenges, {
+  type ChallengeRow,
+} from "@/components/dashboard/Challenges";
 
 // The page reads cookies + Supabase data per-request — never static.
 export const dynamic = "force-dynamic";
@@ -30,6 +33,7 @@ export default async function DashboardPage() {
     progressRes,
     bucketRes,
     recentRes,
+    challengesRes,
     configRes,
   ] = await Promise.all([
     supabase
@@ -55,6 +59,11 @@ export default async function DashboardPage() {
       .order("created_at", { ascending: false })
       .limit(10),
     supabase
+      .from("v_challenges")
+      .select("*")
+      .in("status", ["pending", "active"])
+      .order("created_at", { ascending: false }),
+    supabase
       .from("challenge_config")
       .select("currency, timezone")
       .eq("id", 1)
@@ -66,6 +75,7 @@ export default async function DashboardPage() {
     progressRes.error,
     bucketRes.error,
     recentRes.error,
+    challengesRes.error,
     configRes.error,
   ].filter(Boolean);
   if (errors.length > 0) {
@@ -83,6 +93,7 @@ export default async function DashboardPage() {
   const progress = (progressRes.data ?? []) as ProgressRow[];
   const bucket = (bucketRes.data ?? []) as BucketRow[];
   const recent = (recentRes.data ?? []) as RecentEntry[];
+  const challenges = (challengesRes.data ?? []) as ChallengeRow[];
   const currency = configRes.data?.currency ?? "EUR";
 
   // Compute "today" in the challenge's local timezone for relative-day labels.
@@ -92,20 +103,54 @@ export default async function DashboardPage() {
     }),
   );
 
+  const adminHasResolveWork =
+    profile.is_admin && challenges.some((c) => c.status === "active");
+
   return (
     <main className="flex flex-col gap-6 pb-24 pt-2">
       <Header displayName={profile.display_name} isAdmin={profile.is_admin} />
-      <Link
-        href="/log"
-        className="block w-full rounded-xl bg-bucket-500 py-3 text-center text-base font-semibold text-white shadow-sm transition active:scale-[0.99]"
-      >
-        + Log activity
-      </Link>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href="/log"
+          className="rounded-xl bg-bucket-500 py-3 text-center text-base font-semibold text-white shadow-sm transition active:scale-[0.99]"
+        >
+          + Log activity
+        </Link>
+        <Link
+          href="/challenge/new"
+          className="rounded-xl bg-purple-600 py-3 text-center text-base font-semibold text-white shadow-sm transition active:scale-[0.99]"
+        >
+          + Challenge
+        </Link>
+      </div>
+
       <WeekProgress rows={progress} currentUserId={user.id} />
       <BucketSummary rows={bucket} currency={currency} currentUserId={user.id} />
+      <Challenges
+        challenges={challenges}
+        currentUserId={user.id}
+        currency={currency}
+      />
       <RecentActivity entries={recent} todayLocal={todayLocal} />
+
+      {profile.is_admin ? (
+        <Link
+          href="/admin"
+          className={`block w-full rounded-xl border py-2.5 text-center text-sm font-semibold shadow-sm transition ${
+            adminHasResolveWork
+              ? "border-purple-500 bg-purple-50 text-purple-800"
+              : "border-neutral-200 bg-white text-neutral-700"
+          }`}
+        >
+          {adminHasResolveWork
+            ? "Admin · resolve active challenges →"
+            : "Admin panel →"}
+        </Link>
+      ) : null}
+
       <p className="text-center text-xs text-neutral-400">
-        Build: phase 4 — activity logging.
+        Build: phase 5 — challenges.
       </p>
     </main>
   );
