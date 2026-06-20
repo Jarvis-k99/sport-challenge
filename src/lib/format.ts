@@ -11,9 +11,19 @@ export function formatCents(
   }).format(cents / 100);
 }
 
-/** Pretty date in dd MMM (e.g. "06 May"). */
+/** Pretty date in dd MMM (e.g. "06 May"). Accepts either a YYYY-MM-DD
+ *  date-only string, a full ISO timestamp string, or a Date. */
 export function formatShortDate(date: string | Date, locale = "en-GB"): string {
-  const d = typeof date === "string" ? new Date(date + "T00:00:00") : date;
+  let d: Date;
+  if (typeof date === "string") {
+    // Date-only "YYYY-MM-DD" gets anchored at local midnight so we
+    // don't accidentally roll back a day under negative-offset zones.
+    // Anything longer is a full ISO timestamp — let Date parse it.
+    d = date.length === 10 ? new Date(date + "T00:00:00") : new Date(date);
+  } else {
+    d = date;
+  }
+  if (isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "short",

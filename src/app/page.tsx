@@ -8,12 +8,10 @@ import WeekProgress, {
 import BucketSummary, {
   type BucketRow,
 } from "@/components/dashboard/BucketSummary";
-import RecentActivity, {
-  type RecentEntry,
-} from "@/components/dashboard/RecentActivity";
 import Challenges, {
   type ChallengeRow,
 } from "@/components/dashboard/Challenges";
+import NavCard from "@/components/dashboard/NavCard";
 
 // The page reads cookies + Supabase data per-request — never static.
 export const dynamic = "force-dynamic";
@@ -28,53 +26,39 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [
-    profileRes,
-    progressRes,
-    bucketRes,
-    recentRes,
-    challengesRes,
-    configRes,
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, is_admin")
-      .eq("id", user.id)
-      .single(),
-    supabase
-      .from("v_current_week_progress")
-      .select(
-        "user_id, display_name, is_admin, min_per_week, session_count, threshold_met, week_start",
-      ),
-    supabase
-      .from("v_bucket_summary")
-      .select(
-        "user_id, display_name, missed_weeks, missed_fee_cents, lost_challenges_cents, total_owed_cents",
-      ),
-    supabase
-      .from("v_recent_entries")
-      .select(
-        "id, user_id, display_name, activity_type_id, activity_name, activity_emoji, activity_date, created_at, note, photo_path",
-      )
-      .order("created_at", { ascending: false })
-      .limit(10),
-    supabase
-      .from("v_challenges")
-      .select("*")
-      .in("status", ["pending", "active"])
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("challenge_config")
-      .select("currency, timezone")
-      .eq("id", 1)
-      .single(),
-  ]);
+  const [profileRes, progressRes, bucketRes, challengesRes, configRes] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select("display_name, is_admin")
+        .eq("id", user.id)
+        .single(),
+      supabase
+        .from("v_current_week_progress")
+        .select(
+          "user_id, display_name, is_admin, min_per_week, session_count, threshold_met, week_start",
+        ),
+      supabase
+        .from("v_bucket_summary")
+        .select(
+          "user_id, display_name, missed_weeks, missed_fee_cents, lost_challenges_cents, total_owed_cents",
+        ),
+      supabase
+        .from("v_challenges")
+        .select("*")
+        .in("status", ["pending", "active"])
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("challenge_config")
+        .select("currency")
+        .eq("id", 1)
+        .single(),
+    ]);
 
   const errors = [
     profileRes.error,
     progressRes.error,
     bucketRes.error,
-    recentRes.error,
     challengesRes.error,
     configRes.error,
   ].filter(Boolean);
@@ -92,24 +76,17 @@ export default async function DashboardPage() {
   const profile = profileRes.data!;
   const progress = (progressRes.data ?? []) as ProgressRow[];
   const bucket = (bucketRes.data ?? []) as BucketRow[];
-  const recent = (recentRes.data ?? []) as RecentEntry[];
   const challenges = (challengesRes.data ?? []) as ChallengeRow[];
   const currency = configRes.data?.currency ?? "EUR";
-
-  // Compute "today" in the challenge's local timezone for relative-day labels.
-  const todayLocal = new Date(
-    new Date().toLocaleString("en-US", {
-      timeZone: configRes.data?.timezone ?? "Europe/Berlin",
-    }),
-  );
 
   const adminHasResolveWork =
     profile.is_admin && challenges.some((c) => c.status === "active");
 
   return (
-    <main className="flex flex-col gap-6 pb-24 pt-2">
+    <main className="flex flex-col gap-6 pb-12 pt-2">
       <Header displayName={profile.display_name} isAdmin={profile.is_admin} />
 
+      {/* --- Top action section --- */}
       <div className="grid grid-cols-2 gap-2">
         <Link
           href="/log"
@@ -132,7 +109,22 @@ export default async function DashboardPage() {
         currentUserId={user.id}
         currency={currency}
       />
-      <RecentActivity entries={recent} todayLocal={todayLocal} />
+
+      {/* --- Sub-page navigation --- */}
+      <div className="flex flex-col gap-2 pt-2">
+        <NavCard
+          href="/stats"
+          icon="📊"
+          title="Statistics"
+          subtitle="Leaderboard and per-person breakdowns."
+        />
+        <NavCard
+          href="/rules"
+          icon="📖"
+          title="Read the rules"
+          subtitle="Period, weekly target, fee, activities."
+        />
+      </div>
 
       {profile.is_admin ? (
         <Link
@@ -148,13 +140,6 @@ export default async function DashboardPage() {
             : "Admin panel →"}
         </Link>
       ) : null}
-
-      <Link
-        href="/rules"
-        className="text-center text-xs text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline"
-      >
-        Read the rules
-      </Link>
     </main>
   );
 }
