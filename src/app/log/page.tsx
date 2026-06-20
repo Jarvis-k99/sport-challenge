@@ -5,6 +5,8 @@ import { currentWeek } from "@/lib/week";
 import { deleteEntry } from "./actions";
 import LogForm, { type ActivityType } from "./log-form";
 import { formatRelativeDay } from "@/lib/format";
+import { photoUrl } from "@/lib/photo";
+import PhotoThumb from "@/components/PhotoThumb";
 
 import type { Metadata } from "next";
 
@@ -14,6 +16,8 @@ export const dynamic = "force-dynamic";
 type MyEntry = {
   id: string;
   activity_date: string;
+  note: string | null;
+  photo_path: string | null;
   activity_types: { id: number; name: string; emoji: string | null } | null;
 };
 
@@ -41,7 +45,9 @@ export default async function LogPage() {
 
   const myEntriesRes = await supabase
     .from("entries")
-    .select("id, activity_date, activity_types(id, name, emoji)")
+    .select(
+      "id, activity_date, note, photo_path, activity_types(id, name, emoji)",
+    )
     .eq("user_id", user.id)
     .gte("activity_date", weekStart)
     .lte("activity_date", days[6].iso)
@@ -94,36 +100,49 @@ export default async function LogPage() {
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white shadow-sm">
-            {myEntries.map((e) => (
-              <li
-                key={e.id}
-                className="flex items-center justify-between gap-3 p-3"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl leading-none">
+            {myEntries.map((e) => {
+              const url = photoUrl(e.photo_path);
+              return (
+                <li
+                  key={e.id}
+                  className="flex items-start gap-3 p-3"
+                >
+                  <span className="mt-0.5 text-2xl leading-none">
                     {e.activity_types?.emoji ?? "•"}
                   </span>
-                  <div className="flex flex-col">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <span className="text-sm font-medium">
                       {e.activity_types?.name ?? "Unknown"}
                     </span>
                     <span className="text-xs text-neutral-500">
                       {formatRelativeDay(e.activity_date, todayLocal)}
                     </span>
+                    {e.note ? (
+                      <p className="mt-1 line-clamp-3 text-sm text-neutral-700">
+                        {e.note}
+                      </p>
+                    ) : null}
                   </div>
-                </div>
-                <form action={deleteEntry}>
-                  <input type="hidden" name="id" value={e.id} />
-                  <button
-                    type="submit"
-                    aria-label="Delete entry"
-                    className="rounded-full px-2.5 py-1 text-sm text-neutral-500 transition hover:bg-red-50 hover:text-red-600"
-                  >
-                    ×
-                  </button>
-                </form>
-              </li>
-            ))}
+                  {url ? (
+                    <PhotoThumb
+                      url={url}
+                      alt={e.activity_types?.name ?? "Activity"}
+                      size={56}
+                    />
+                  ) : null}
+                  <form action={deleteEntry}>
+                    <input type="hidden" name="id" value={e.id} />
+                    <button
+                      type="submit"
+                      aria-label="Delete entry"
+                      className="rounded-full px-2.5 py-1 text-sm text-neutral-500 transition hover:bg-red-50 hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

@@ -54,7 +54,7 @@ export default async function DashboardPage() {
     supabase
       .from("v_recent_entries")
       .select(
-        "id, user_id, display_name, activity_type_id, activity_name, activity_emoji, activity_date, created_at",
+        "id, user_id, display_name, activity_type_id, activity_name, activity_emoji, activity_date, created_at, note, photo_path",
       )
       .order("created_at", { ascending: false })
       .limit(10),

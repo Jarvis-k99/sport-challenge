@@ -1,4 +1,6 @@
 import { formatRelativeDay } from "@/lib/format";
+import { photoUrl } from "@/lib/photo";
+import PhotoThumb from "@/components/PhotoThumb";
 
 export type RecentEntry = {
   id: string;
@@ -8,6 +10,8 @@ export type RecentEntry = {
   activity_emoji: string | null;
   activity_date: string;
   created_at: string;
+  note: string | null;
+  photo_path: string | null;
 };
 
 type Props = {
@@ -27,26 +31,36 @@ export default function RecentActivity({ entries, todayLocal }: Props) {
         </p>
       ) : (
         <ul className="flex flex-col divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white shadow-sm">
-          {entries.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-center justify-between gap-3 p-3"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl leading-none">
+          {entries.map((e) => {
+            const url = photoUrl(e.photo_path);
+            return (
+              <li key={e.id} className="flex items-start gap-3 p-3">
+                <span className="mt-0.5 text-2xl leading-none">
                   {e.activity_emoji ?? "•"}
                 </span>
-                <div className="flex flex-col">
+                <div className="flex min-w-0 flex-1 flex-col">
                   <span className="text-sm font-medium">
                     {e.display_name} · {e.activity_name}
                   </span>
                   <span className="text-xs text-neutral-500">
                     {formatRelativeDay(e.activity_date, todayLocal)}
                   </span>
+                  {e.note ? (
+                    <p className="mt-1 line-clamp-3 text-sm text-neutral-700">
+                      {e.note}
+                    </p>
+                  ) : null}
                 </div>
-              </div>
-            </li>
-          ))}
+                {url ? (
+                  <PhotoThumb
+                    url={url}
+                    alt={`${e.display_name} · ${e.activity_name}`}
+                    size={56}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
