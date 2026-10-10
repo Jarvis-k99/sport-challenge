@@ -2,7 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { fetchSeason, seasonRange, type Season } from "@/lib/season";
+import { fetchSeason } from "@/lib/season";
+import {
+  archivedTxns,
+  fetchArchivedSeasons,
+  type ArchivedSeason,
+} from "@/lib/season-archive";
 import Leaderboard, {
   type LeaderboardRow,
 } from "@/components/stats/Leaderboard";
@@ -12,12 +17,25 @@ import Breakdown, {
   type BucketTxn,
 } from "@/components/stats/Breakdown";
 import UserPicker from "@/components/stats/UserPicker";
+import SeasonPicker from "@/components/stats/SeasonPicker";
 import type { ChallengeRow } from "@/components/dashboard/Challenges";
 
 export const metadata: Metadata = { title: "Statistics" };
 export const dynamic = "force-dynamic";
 
-type SearchParams = { tab?: string; user?: string };
+type SearchParams = { tab?: string; user?: string; season?: string };
+
+/**
+ * The season the page is showing: the running one (default) or a finished
+ * one from `season_archive`. Everything below counts inside [start, end].
+ */
+type ViewSeason = {
+  name: string;
+  start_date: string;
+  end_date: string;
+  currency: string;
+  archived: ArchivedSeason | null;
+};
 
 export default async function StatsPage({
   searchParams,
@@ -33,12 +51,13 @@ export default async function StatsPage({
   const tab = searchParams.tab === "breakdown" ? "breakdown" : "leaderboard";
 
   // Always need: list of profiles + currency.
-  const [profilesRes, configRes] = await Promise.all([
+  const [profilesRes, configRes, archiveRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, display_name, is_admin")
       .order("display_name"),
     fetchSeason(supabase),
+    fetchArchivedSeasons(supabase),
   ]);
 
   if (profilesRes.error || configRes.error || !configRes.data) {
@@ -55,8 +74,38 @@ export default async function StatsPage({
   }
 
   const profiles = profilesRes.data ?? [];
-  const season = configRes.data;
+  const current = configRes.data;
+  // If the archive table isn't there yet, just offer the current season.
+  const archived = archiveRes.error ? [] : (archiveRes.data ?? []);
+
+  const picked = archived.find((a) => String(a.id) === searchParams.season);
+  const season: ViewSeason = picked
+    ? {
+        name: picked.name,
+        start_date: picked.start_date,
+        end_date: picked.end_date,
+        currency: picked.currency,
+        archived: picked,
+      }
+    : {
+        name: current.season_name,
+        start_date: current.start_date,
+        end_date: current.end_date,
+        currency: current.currency,
+        archived: null,
+      };
   const currency = season.currency ?? "EUR";
+  const seasonParam = picked ? String(picked.id) : undefined;
+  const seasonQuery = seasonParam ? `&season=${seasonParam}` : "";
+
+  const seasonOptions = [
+    { value: "current", label: `${current.season_name} (current)` },
+    ...archived.map((a) => ({
+      value: String(a.id),
+      label: `${a.name} · ${a.start_date.slice(0, 7)} – ${a.end_date.slice(0, 7)}`,
+    })),
+  ];
+  const selectedUserId = searchParams.user ?? user.id;
 
   return (
     <main className="flex flex-col gap-6 pb-12 pt-2">
@@ -73,26 +122,40 @@ export default async function StatsPage({
 
       <nav className="grid grid-cols-2 gap-2 rounded-xl border border-neutral-200 bg-white p-1 shadow-sm">
         <TabLink
-          href="/stats?tab=leaderboard"
+          href={`/stats?tab=leaderboard${seasonQuery}`}
           active={tab === "leaderboard"}
           label="Leaderboard"
         />
         <TabLink
-          href={`/stats?tab=breakdown&user=${user.id}`}
+          href={`/stats?tab=breakdown&user=${user.id}${seasonQuery}`}
           active={tab === "breakdown"}
           label="Breakdown"
         />
       </nav>
 
+      {seasonOptions.length > 1 ? (
+        <SeasonPicker
+          options={seasonOptions}
+          value={seasonParam ?? "current"}
+          tab={tab}
+          user={tab === "breakdown" ? selectedUserId : undefined}
+        />
+      ) : null}
+
       {tab === "leaderboard" ? (
-        <LeaderboardTab currentUserId={user.id} currency={currency} />
-      ) : (
-        <BreakdownTab
-          profiles={profiles}
-          selectedUserId={searchParams.user ?? user.id}
+        <LeaderboardTab
           currentUserId={user.id}
           currency={currency}
           season={season}
+        />
+      ) : (
+        <BreakdownTab
+          profiles={profiles}
+          selectedUserId={selectedUserId}
+          currentUserId={user.id}
+          currency={currency}
+          season={season}
+          seasonParam={seasonParam}
         />
       )}
     </main>
@@ -125,10 +188,30 @@ function TabLink({
 async function LeaderboardTab({
   currentUserId,
   currency,
+  season,
 }: {
   currentUserId: string;
   currency: string;
+  season: ViewSeason;
 }) {
+  // Finished season: read the frozen snapshot.
+  if (season.archived) {
+    const rows: LeaderboardRow[] = season.archived.results.users.map((u) => ({
+      user_id: u.user_id,
+      display_name: u.display_name,
+      total_sessions: u.total_sessions,
+      total_owed_cents: u.total_owed_cents,
+    }));
+    return (
+      <Leaderboard
+        rows={rows}
+        currency={currency}
+        currentUserId={currentUserId}
+        owedLabel="paid"
+      />
+    );
+  }
+
   const supabase = createClient();
   const [totalsRes, bucketRes] = await Promise.all([
     supabase
@@ -180,15 +263,18 @@ async function BreakdownTab({
   currentUserId,
   currency,
   season,
+  seasonParam,
 }: {
   profiles: { id: string; display_name: string; is_admin: boolean }[];
   selectedUserId: string;
   currentUserId: string;
   currency: string;
-  season: Season;
+  season: ViewSeason;
+  seasonParam?: string;
 }) {
   const supabase = createClient();
-  const range = seasonRange(season);
+  const range = { from: season.start_date, to: season.end_date };
+  const archived = season.archived;
 
   // Make sure the selected user is real; otherwise fall back to current user.
   const subjectProfile =
@@ -196,34 +282,33 @@ async function BreakdownTab({
     profiles.find((p) => p.id === currentUserId)!;
   const subjectId = subjectProfile.id;
 
-  const [
-    totalsRes,
-    bucketSummaryRes,
-    txnsRes,
-    challengesRes,
-    entriesRes,
-    categoryRes,
-  ] = await Promise.all([
-      supabase
-        .from("v_user_totals")
-        .select("total_sessions")
-        .eq("user_id", subjectId)
-        .single(),
-      supabase
-        .from("v_bucket_summary")
-        .select("total_owed_cents")
-        .eq("user_id", subjectId)
-        .single(),
-      supabase
-        .from("v_bucket_transactions")
-        .select("occurred_at, kind, label, amount_cents")
-        .eq("user_id", subjectId)
-        .order("occurred_at", { ascending: false }),
-      supabase
-        .from("v_challenges")
-        .select("*")
-        .eq("status", "active")
-        .or(`challenger_id.eq.${subjectId},target_id.eq.${subjectId}`),
+  // Live views only describe the running season; a finished one is rebuilt
+  // from its archive snapshot (see below).
+  const [liveRes, entriesRes, categoryRes] = await Promise.all([
+    archived
+      ? Promise.resolve(null)
+      : Promise.all([
+          supabase
+            .from("v_user_totals")
+            .select("total_sessions")
+            .eq("user_id", subjectId)
+            .single(),
+          supabase
+            .from("v_bucket_summary")
+            .select("total_owed_cents")
+            .eq("user_id", subjectId)
+            .single(),
+          supabase
+            .from("v_bucket_transactions")
+            .select("occurred_at, kind, label, amount_cents")
+            .eq("user_id", subjectId)
+            .order("occurred_at", { ascending: false }),
+          supabase
+            .from("v_challenges")
+            .select("*")
+            .eq("status", "active")
+            .or(`challenger_id.eq.${subjectId},target_id.eq.${subjectId}`),
+        ]),
       // Recent-entries list: season only, capped for display.
       supabase
         .from("entries")
@@ -247,10 +332,7 @@ async function BreakdownTab({
   ]);
 
   const errors = [
-    totalsRes.error,
-    bucketSummaryRes.error,
-    txnsRes.error,
-    challengesRes.error,
+    ...(liveRes ? liveRes.map((r) => r.error) : []),
     entriesRes.error,
     categoryRes.error,
   ].filter(Boolean);
@@ -305,6 +387,24 @@ async function BreakdownTab({
     photo_path: e.photo_path,
   }));
 
+  // Numbers shown in the header + bucket section, for either kind of season.
+  let totalSessions: number;
+  let totalOwedCents: number;
+  let bucketTxns: BucketTxn[];
+  let activeChallenges: ChallengeRow[] = [];
+  if (archived) {
+    const au = archived.results.users.find((u) => u.user_id === subjectId);
+    totalSessions = au?.total_sessions ?? 0;
+    totalOwedCents = au?.total_owed_cents ?? 0;
+    bucketTxns = au ? archivedTxns(archived, au) : [];
+  } else {
+    const [totalsRes, bucketSummaryRes, txnsRes, challengesRes] = liveRes!;
+    totalSessions = totalsRes.data?.total_sessions ?? 0;
+    totalOwedCents = bucketSummaryRes.data?.total_owed_cents ?? 0;
+    bucketTxns = (txnsRes.data ?? []) as BucketTxn[];
+    activeChallenges = (challengesRes.data ?? []) as ChallengeRow[];
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <UserPicker
@@ -313,20 +413,22 @@ async function BreakdownTab({
           display_name: p.display_name,
         }))}
         selectedId={subjectId}
+        season={seasonParam}
       />
       <Breakdown
         subject={{
           id: subjectId,
           display_name: subjectProfile.display_name,
-          total_sessions: totalsRes.data?.total_sessions ?? 0,
+          total_sessions: totalSessions,
         }}
         isYou={subjectId === currentUserId}
         categories={categories}
         pastEntries={pastEntries}
-        activeChallenges={(challengesRes.data ?? []) as ChallengeRow[]}
-        bucketTxns={(txnsRes.data ?? []) as BucketTxn[]}
+        activeChallenges={activeChallenges}
+        bucketTxns={bucketTxns}
         currency={currency}
-        totalOwedCents={bucketSummaryRes.data?.total_owed_cents ?? 0}
+        totalOwedCents={totalOwedCents}
+        isArchived={Boolean(archived)}
       />
     </div>
   );

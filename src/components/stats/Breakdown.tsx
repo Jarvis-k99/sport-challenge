@@ -38,6 +38,8 @@ type Props = {
   bucketTxns: BucketTxn[];
   currency: string;
   totalOwedCents: number;
+  /** Finished season: no live challenges, amounts are "paid" not "owes". */
+  isArchived?: boolean;
 };
 
 export default function Breakdown({
@@ -49,6 +51,7 @@ export default function Breakdown({
   bucketTxns,
   currency,
   totalOwedCents,
+  isArchived = false,
 }: Props) {
   const slices: PieSlice[] = categories.map((c) => ({
     key: c.activity_type_id,
@@ -78,7 +81,8 @@ export default function Breakdown({
                 totalOwedCents > 0 ? "text-neutral-900" : "text-neutral-400"
               }
             >
-              owes {formatCents(totalOwedCents, currency)}
+              {isArchived ? "paid" : "owes"}{" "}
+              {formatCents(totalOwedCents, currency)}
             </span>
           </span>
         </div>
@@ -88,6 +92,7 @@ export default function Breakdown({
         <PieChart slices={slices} size={220} />
       </Section>
 
+      {!isArchived ? (
       <Section title={`Active challenges (${activeChallenges.length})`}>
         {activeChallenges.length === 0 ? (
           <EmptyHint>No active challenges right now.</EmptyHint>
@@ -111,6 +116,7 @@ export default function Breakdown({
           </ul>
         )}
       </Section>
+      ) : null}
 
       <Section
         title={`Bucket transactions (${bucketTxns.length})`}

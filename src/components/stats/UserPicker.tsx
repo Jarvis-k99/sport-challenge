@@ -5,9 +5,12 @@ type Person = { id: string; display_name: string };
 type Props = {
   people: Person[];
   selectedId: string;
+  /** Archived season id to keep selected while switching users. */
+  season?: string;
 };
 
-export default function UserPicker({ people, selectedId }: Props) {
+export default function UserPicker({ people, selectedId, season }: Props) {
+  const seasonQuery = season ? `&season=${season}` : "";
   return (
     <div className="-mx-4 overflow-x-auto px-4">
       <ul className="flex w-max gap-2">
@@ -16,7 +19,7 @@ export default function UserPicker({ people, selectedId }: Props) {
           return (
             <li key={p.id}>
               <Link
-                href={`/stats?tab=breakdown&user=${p.id}`}
+                href={`/stats?tab=breakdown&user=${p.id}${seasonQuery}`}
                 scroll={false}
                 className={`block whitespace-nowrap rounded-full border px-4 py-1.5 text-sm font-medium transition ${
                   active

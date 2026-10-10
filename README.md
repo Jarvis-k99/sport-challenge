@@ -84,6 +84,10 @@ Every fee view reads the single `challenge_config` row, so never just change the
 **Reset the bucket / shift the challenge dates within a season.**
 Edit `challenge_config` (e.g. `UPDATE public.challenge_config SET start_date = '...' WHERE id = 1`). All views recompute on the next page load — nothing else to invalidate. To clear test data from prior resolved challenges, `DELETE FROM challenges WHERE status = 'inactive'`.
 
+## Seasons in the app
+
+`/stats` has a season dropdown (Leaderboard and Breakdown). The running season is the default and reads the live views; finished seasons are rebuilt from their frozen `season_archive` snapshot (`src/lib/season-archive.ts`) plus the raw entries inside that season's dates (category pie, activity list). When the next season ends, run the same archive step once and it appears in the dropdown automatically.
+
 ## One rule: everything counts inside the current season
 
 `challenge_config` (row id = 1) is the single definition of the current season. All counting — sessions, missed weeks, fees, the weekly progress, the breakdown pie — must be limited to `[start_date, end_date]`. In SQL, join `challenge_config`; in app code, read it with `fetchSeason()` and use `seasonRange()` (`src/lib/season.ts`). Never count raw `entries`.

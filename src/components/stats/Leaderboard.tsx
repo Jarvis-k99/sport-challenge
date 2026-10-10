@@ -11,9 +11,16 @@ type Props = {
   rows: LeaderboardRow[];
   currency: string;
   currentUserId: string;
+  /** Wording for the amount: "owes" while running, "paid" once finished. */
+  owedLabel?: string;
 };
 
-export default function Leaderboard({ rows, currency, currentUserId }: Props) {
+export default function Leaderboard({
+  rows,
+  currency,
+  currentUserId,
+  owedLabel = "owes",
+}: Props) {
   const sorted = [...rows].sort((a, b) => {
     if (b.total_sessions !== a.total_sessions) {
       return b.total_sessions - a.total_sessions;
@@ -72,7 +79,7 @@ export default function Leaderboard({ rows, currency, currentUserId }: Props) {
                     : "text-neutral-400"
                 }`}
               >
-                owes {formatCents(r.total_owed_cents, currency)}
+                {owedLabel} {formatCents(r.total_owed_cents, currency)}
               </span>
             </div>
           </li>
