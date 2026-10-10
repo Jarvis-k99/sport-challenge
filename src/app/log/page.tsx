@@ -2,9 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { currentWeek } from "@/lib/week";
+import { fetchSeason, isInSeason } from "@/lib/season";
 import { deleteEntry } from "./actions";
 import LogForm, { type ActivityType } from "./log-form";
-import { formatRelativeDay } from "@/lib/format";
+import { formatRelativeDay, formatShortDate } from "@/lib/format";
 import { photoUrl } from "@/lib/photo";
 import PhotoThumb from "@/components/PhotoThumb";
 
@@ -33,11 +34,7 @@ export default async function LogPage() {
       .from("activity_types")
       .select("id, name, emoji, sort_order")
       .order("sort_order"),
-    supabase
-      .from("challenge_config")
-      .select("timezone")
-      .eq("id", 1)
-      .single(),
+    fetchSeason(supabase),
   ]);
 
   const tz = configRes.data?.timezone ?? "Europe/Berlin";
@@ -74,6 +71,8 @@ export default async function LogPage() {
   const myEntries = (myEntriesRes.data ?? []) as unknown as MyEntry[];
 
   const todayLocal = new Date(today + "T12:00:00");
+  const season = configRes.data;
+  const seasonRunning = season ? isInSeason(season, today) : true;
 
   return (
     <main className="flex flex-col gap-6 pb-12 pt-2">
@@ -87,6 +86,14 @@ export default async function LogPage() {
         <h1 className="text-lg font-semibold">Log activity</h1>
         <span aria-hidden className="w-10" />
       </header>
+
+      {!seasonRunning && season ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          {season.season_name} runs {formatShortDate(season.start_date)} –{" "}
+          {formatShortDate(season.end_date)}. Sessions logged outside that
+          period are saved but don’t count.
+        </p>
+      ) : null}
 
       <LogForm activityTypes={activityTypes} days={days} todayIso={today} />
 

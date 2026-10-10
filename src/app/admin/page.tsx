@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchSeason } from "@/lib/season";
 import { formatCents } from "@/lib/format";
 import ResolveForm from "./resolve-form";
 import type { ChallengeRow } from "@/components/dashboard/Challenges";
@@ -52,11 +53,7 @@ export default async function AdminPage() {
       .eq("status", "inactive")
       .order("resolved_at", { ascending: false })
       .limit(10),
-    supabase
-      .from("challenge_config")
-      .select("currency")
-      .eq("id", 1)
-      .single(),
+    fetchSeason(supabase),
   ]);
 
   const errors = [activeRes.error, recentRes.error, configRes.error].filter(

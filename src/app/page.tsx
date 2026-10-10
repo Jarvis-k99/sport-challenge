@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchSeason } from "@/lib/season";
 import Header from "@/components/dashboard/Header";
 import WeekProgress, {
   type ProgressRow,
@@ -48,11 +49,7 @@ export default async function DashboardPage() {
         .select("*")
         .in("status", ["pending", "active"])
         .order("created_at", { ascending: false }),
-      supabase
-        .from("challenge_config")
-        .select("currency")
-        .eq("id", 1)
-        .single(),
+      fetchSeason(supabase),
     ]);
 
   const errors = [
@@ -78,13 +75,18 @@ export default async function DashboardPage() {
   const bucket = (bucketRes.data ?? []) as BucketRow[];
   const challenges = (challengesRes.data ?? []) as ChallengeRow[];
   const currency = configRes.data?.currency ?? "EUR";
+  const seasonName = configRes.data?.season_name ?? "";
 
   const adminHasResolveWork =
     profile.is_admin && challenges.some((c) => c.status === "active");
 
   return (
     <main className="flex flex-col gap-6 pb-12 pt-2">
-      <Header displayName={profile.display_name} isAdmin={profile.is_admin} />
+      <Header
+        displayName={profile.display_name}
+        isAdmin={profile.is_admin}
+        seasonName={seasonName}
+      />
 
       {/* --- Top action section --- */}
       <div className="grid grid-cols-2 gap-2">
@@ -123,6 +125,12 @@ export default async function DashboardPage() {
           icon="📖"
           title="Read the rules"
           subtitle="Period, weekly target, fee, activities."
+        />
+        <NavCard
+          href="/archive"
+          icon="🗂️"
+          title="Past seasons"
+          subtitle="Final results of earlier seasons."
         />
       </div>
 

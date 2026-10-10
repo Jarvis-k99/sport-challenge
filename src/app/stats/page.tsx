@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { fetchSeason, seasonRange, type Season } from "@/lib/season";
 import Leaderboard, {
   type LeaderboardRow,
 } from "@/components/stats/Leaderboard";
@@ -37,14 +38,10 @@ export default async function StatsPage({
       .from("profiles")
       .select("id, display_name, is_admin")
       .order("display_name"),
-    supabase
-      .from("challenge_config")
-      .select("currency")
-      .eq("id", 1)
-      .single(),
+    fetchSeason(supabase),
   ]);
 
-  if (profilesRes.error || configRes.error) {
+  if (profilesRes.error || configRes.error || !configRes.data) {
     return (
       <main className="flex flex-col gap-4 pt-6">
         <h1 className="text-xl font-bold">Couldn’t load stats</h1>
@@ -58,7 +55,8 @@ export default async function StatsPage({
   }
 
   const profiles = profilesRes.data ?? [];
-  const currency = configRes.data?.currency ?? "EUR";
+  const season = configRes.data;
+  const currency = season.currency ?? "EUR";
 
   return (
     <main className="flex flex-col gap-6 pb-12 pt-2">
@@ -94,6 +92,7 @@ export default async function StatsPage({
           selectedUserId={searchParams.user ?? user.id}
           currentUserId={user.id}
           currency={currency}
+          season={season}
         />
       )}
     </main>
@@ -180,13 +179,16 @@ async function BreakdownTab({
   selectedUserId,
   currentUserId,
   currency,
+  season,
 }: {
   profiles: { id: string; display_name: string; is_admin: boolean }[];
   selectedUserId: string;
   currentUserId: string;
   currency: string;
+  season: Season;
 }) {
   const supabase = createClient();
+  const range = seasonRange(season);
 
   // Make sure the selected user is real; otherwise fall back to current user.
   const subjectProfile =
@@ -194,8 +196,14 @@ async function BreakdownTab({
     profiles.find((p) => p.id === currentUserId)!;
   const subjectId = subjectProfile.id;
 
-  const [totalsRes, bucketSummaryRes, txnsRes, challengesRes, entriesRes] =
-    await Promise.all([
+  const [
+    totalsRes,
+    bucketSummaryRes,
+    txnsRes,
+    challengesRes,
+    entriesRes,
+    categoryRes,
+  ] = await Promise.all([
       supabase
         .from("v_user_totals")
         .select("total_sessions")
@@ -216,16 +224,27 @@ async function BreakdownTab({
         .select("*")
         .eq("status", "active")
         .or(`challenger_id.eq.${subjectId},target_id.eq.${subjectId}`),
+      // Recent-entries list: season only, capped for display.
       supabase
         .from("entries")
         .select(
           "id, activity_date, note, photo_path, activity_types(id, name, emoji)",
         )
         .eq("user_id", subjectId)
+        .gte("activity_date", range.from)
+        .lte("activity_date", range.to)
         .order("activity_date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(50),
-    ]);
+      // Pie chart: EVERY session of the season (no display cap), so the
+      // donut total always equals the leaderboard's total_sessions.
+      supabase
+        .from("entries")
+        .select("activity_types(id, name, emoji)")
+        .eq("user_id", subjectId)
+        .gte("activity_date", range.from)
+        .lte("activity_date", range.to),
+  ]);
 
   const errors = [
     totalsRes.error,
@@ -233,6 +252,7 @@ async function BreakdownTab({
     txnsRes.error,
     challengesRes.error,
     entriesRes.error,
+    categoryRes.error,
   ].filter(Boolean);
   if (errors.length > 0) {
     return (
@@ -250,10 +270,14 @@ async function BreakdownTab({
     activity_types: { id: number; name: string; emoji: string | null } | null;
   };
   const entries = (entriesRes.data ?? []) as unknown as EntryShape[];
+  const seasonEntries = (categoryRes.data ?? []) as unknown as Pick<
+    EntryShape,
+    "activity_types"
+  >[];
 
-  // Aggregate by activity_type for the pie chart.
+  // Aggregate by activity_type for the pie chart (whole season).
   const byCat = new Map<number, CategoryRow>();
-  for (const e of entries) {
+  for (const e of seasonEntries) {
     if (!e.activity_types) continue;
     const id = e.activity_types.id;
     const existing = byCat.get(id);

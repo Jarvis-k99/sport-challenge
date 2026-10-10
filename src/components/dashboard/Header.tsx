@@ -1,9 +1,10 @@
 type Props = {
   displayName: string;
   isAdmin: boolean;
+  seasonName?: string;
 };
 
-export default function Header({ displayName, isAdmin }: Props) {
+export default function Header({ displayName, isAdmin, seasonName }: Props) {
   return (
     <header className="flex items-center justify-between">
       <div>
@@ -11,6 +12,11 @@ export default function Header({ displayName, isAdmin }: Props) {
         <p className="text-sm text-neutral-500">
           Hey, {displayName}
           {isAdmin ? " (admin)" : ""}.
+          {seasonName ? (
+            <span className="ml-2 rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-medium text-neutral-600">
+              {seasonName}
+            </span>
+          ) : null}
         </p>
       </div>
       <form action="/auth/signout" method="post">

@@ -34,7 +34,7 @@ sport_challenge/
 
 ## The rules in four lines
 
-- **Period**: 4 May → 30 Aug 2026. Source of truth: `challenge_config` table; `/rules` renders it live.
+- **Period**: set per season in the `challenge_config` table (`season_name`, `start_date`, `end_date`); `/rules` renders it live. Season 1 ran 18 May → 30 Aug 2026 (frozen in `season_archive`, viewable at `/archive`). Winter 2026/27 runs 19 Oct 2026 → 28 Feb 2027.
 - **Weekly target**: ≥3 sessions Mon–Sun, each ≥45 min (honor system on duration).
 - **Penalty**: €5 per missed week into the bucket, computed per closed week from `v_missed_weeks`.
 - **Peer challenges**: status flow `pending → active → inactive`. Target accepts/declines; admin resolves and picks the loser. The loser's amount lands in the bucket via `v_bucket_summary`.
@@ -78,8 +78,15 @@ Supabase Dashboard → Authentication → Users → Add user → fill email + pa
 **Resolve a peer challenge.**
 Sign in as admin (Marlo), open `/admin`, pick the loser via the radio buttons, optional note, **Resolve**. The loser's amount automatically lands in `v_bucket_summary` and on everyone's dashboard.
 
-**Reset the bucket / shift the challenge dates.**
+**Start a new season.**
+Every fee view reads the single `challenge_config` row, so never just change the dates — that would rewrite the finished season. Resolve all open challenges first, then run `011_season_archive.sql`-style archiving (snapshot into `season_archive`, tag resolved challenges via `challenges.archived_in`) and finally update `challenge_config` (see `012_winter_season.sql`). Then run `013_season_scoped_counting.sql` once. Pending/active challenges carry over. The Supabase free tier pauses after ~7 idle days; `/api/keepalive` (daily Vercel cron, see `vercel.json`) prevents that.
+
+**Reset the bucket / shift the challenge dates within a season.**
 Edit `challenge_config` (e.g. `UPDATE public.challenge_config SET start_date = '...' WHERE id = 1`). All views recompute on the next page load — nothing else to invalidate. To clear test data from prior resolved challenges, `DELETE FROM challenges WHERE status = 'inactive'`.
+
+## One rule: everything counts inside the current season
+
+`challenge_config` (row id = 1) is the single definition of the current season. All counting — sessions, missed weeks, fees, the weekly progress, the breakdown pie — must be limited to `[start_date, end_date]`. In SQL, join `challenge_config`; in app code, read it with `fetchSeason()` and use `seasonRange()` (`src/lib/season.ts`). Never count raw `entries`.
 
 ## Pointers for future maintainers (human or agent)
 

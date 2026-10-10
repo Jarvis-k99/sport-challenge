@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { fetchSeason } from "@/lib/season";
 import { formatCents, formatShortDate } from "@/lib/format";
 
 import type { Metadata } from "next";
@@ -23,11 +24,7 @@ export default async function RulesPage() {
   if (!user) redirect("/login");
 
   const [configRes, activitiesRes, profilesRes] = await Promise.all([
-    supabase
-      .from("challenge_config")
-      .select("*")
-      .eq("id", 1)
-      .single(),
+    fetchSeason(supabase),
     supabase
       .from("activity_types")
       .select("id, name, emoji, sort_order")
@@ -73,7 +70,7 @@ export default async function RulesPage() {
         <span aria-hidden className="w-10" />
       </header>
 
-      <Section title="Period">
+      <Section title={cfg.season_name ? `Period · ${cfg.season_name}` : "Period"}>
         <p className="text-sm text-neutral-700">
           {formatShortDate(cfg.start_date)} – {formatShortDate(cfg.end_date)}{" "}
           <span className="text-neutral-400">({weeks} weeks)</span>
