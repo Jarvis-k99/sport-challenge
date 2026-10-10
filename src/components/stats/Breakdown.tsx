@@ -1,4 +1,5 @@
 import { formatCents, formatShortDate } from "@/lib/format";
+import Avatar from "@/components/Avatar";
 import { photoUrl } from "@/lib/photo";
 import { ACTIVITY_COLOR, DEFAULT_ACTIVITY_COLOR } from "@/lib/activity-colors";
 import PhotoThumb from "@/components/PhotoThumb";
@@ -59,8 +60,9 @@ export default function Breakdown({
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <div className="flex items-baseline justify-between">
+      <header className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <Avatar name={subject.display_name} size={52} />
+        <div className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold">
             {subject.display_name}
             {isYou ? (

@@ -1,4 +1,5 @@
 import { formatWeekRange } from "@/lib/format";
+import Avatar from "@/components/Avatar";
 
 export type ProgressRow = {
   user_id: string;
@@ -68,29 +69,34 @@ function ProgressItem({
   const pct = Math.min(100, (row.session_count / minPerWeek) * 100);
 
   return (
-    <li className="rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">
-          {row.display_name}
-          {isYou ? <span className="ml-1 text-neutral-400">(you)</span> : null}
-        </span>
-        <span
-          className={`text-sm font-semibold ${
-            row.threshold_met ? "text-bucket-700" : "text-neutral-700"
-          }`}
-        >
-          {row.session_count}/{minPerWeek}
-          {row.threshold_met ? " ✓" : ""}
-        </span>
-      </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-100">
-        <div
-          className={`h-full rounded-full ${
-            row.threshold_met ? "bg-bucket-500" : "bg-neutral-400"
-          }`}
-          style={{ width: `${pct}%` }}
-          aria-label={`${row.session_count} of ${cap} sessions`}
-        />
+    <li className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 shadow-sm">
+      <Avatar name={row.display_name} size={44} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {row.display_name}
+            {isYou ? (
+              <span className="ml-1 text-neutral-400">(you)</span>
+            ) : null}
+          </span>
+          <span
+            className={`text-sm font-semibold ${
+              row.threshold_met ? "text-bucket-700" : "text-neutral-700"
+            }`}
+          >
+            {row.session_count}/{minPerWeek}
+            {row.threshold_met ? " ✓" : ""}
+          </span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-100">
+          <div
+            className={`h-full rounded-full ${
+              row.threshold_met ? "bg-bucket-500" : "bg-neutral-400"
+            }`}
+            style={{ width: `${pct}%` }}
+            aria-label={`${row.session_count} of ${cap} sessions`}
+          />
+        </div>
       </div>
     </li>
   );
