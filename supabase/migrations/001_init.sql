@@ -83,7 +83,7 @@ insert into public.activity_types (id, name, emoji, sort_order) values
   (6, 'Swimming', '🏊',  6),
   (7, 'Hiking',   '🥾',  7),
   (8, 'Skiing',   '⛷️',  8),
-  (9, 'Other',    '➕',  9)
+  (9, 'Homeworkout', '🤸',  9)
 on conflict (id) do update set
   name       = excluded.name,
   emoji      = excluded.emoji,

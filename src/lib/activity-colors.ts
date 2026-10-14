@@ -12,7 +12,7 @@ export const ACTIVITY_COLOR: Record<number, string> = {
   6: "#06b6d4", // Swimming — cyan
   7: "#22c55e", // Hiking   — green
   8: "#6366f1", // Skiing   — indigo
-  9: "#64748b", // Other    — slate
+  9: "#ec4899", // Homeworkout — pink
 };
 
 /** Fallback for any new activity type that wasn't in the map yet. */

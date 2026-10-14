@@ -1,6 +1,6 @@
 # Sport Challenge
 
-A closed mini web-app for tracking a sports challenge among five friends. Each week, everyone needs to log at least three sessions (running, gym, biking, climbing, yoga, swimming, hiking, skiing, or "other"). Miss a week and you owe €5 into a shared bucket. Anyone can also challenge anyone else to a peer bet; the loser pays the same bucket. The bucket is virtual — settled in person at the end.
+A closed mini web-app for tracking a sports challenge among five friends. Each week, everyone needs to log at least three sessions (running, gym, biking, climbing, yoga, swimming, hiking, skiing, or homeworkout). Miss a week and you owe €5 into a shared bucket. Anyone can also challenge anyone else to a peer bet; the loser pays the same bucket. The bucket is virtual — settled in person at the end.
 
 **Production**: deployed on Vercel — see the `sport-challenge` project under the `jarvis-k99` team.
 **Players**: Marlo (admin), Moritz, Lukas, Bruno, Luca. Pre-issued accounts, no public signup.
