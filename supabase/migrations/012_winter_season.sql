@@ -9,8 +9,8 @@
 
 update public.challenge_config
    set season_name = 'Winter 2026/27',
-       start_date  = date '2026-10-19',   -- Monday
-       end_date    = date '2027-02-28'    -- Sunday (19 full weeks)
+       start_date  = date '2026-10-12',   -- Monday
+       end_date    = date '2027-02-28'    -- Sunday (20 full weeks)
  where id = 1;
 
 -- Sanity check: the bucket must be empty (nothing has closed yet).

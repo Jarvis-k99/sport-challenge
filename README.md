@@ -34,7 +34,7 @@ sport_challenge/
 
 ## The rules in four lines
 
-- **Period**: set per season in the `challenge_config` table (`season_name`, `start_date`, `end_date`); `/rules` renders it live. Season 1 ran 18 May → 30 Aug 2026 (frozen in `season_archive`, viewable at `/archive`). Winter 2026/27 runs 19 Oct 2026 → 28 Feb 2027.
+- **Period**: set per season in the `challenge_config` table (`season_name`, `start_date`, `end_date`); `/rules` renders it live. Season 1 ran 18 May → 30 Aug 2026 (frozen in `season_archive`, viewable at `/archive`). Winter 2026/27 runs 12 Oct 2026 → 28 Feb 2027.
 - **Weekly target**: ≥3 sessions Mon–Sun, each ≥45 min (honor system on duration).
 - **Penalty**: €5 per missed week into the bucket, computed per closed week from `v_missed_weeks`.
 - **Peer challenges**: status flow `pending → active → inactive`. Target accepts/declines; admin resolves and picks the loser. The loser's amount lands in the bucket via `v_bucket_summary`.
